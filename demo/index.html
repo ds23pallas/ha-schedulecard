@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>schedule-card demo</title>
+<style>
+  /* Stand-ins for the Home Assistant theme variables the card relies on. */
+  :root {
+    --primary-background-color: #f4f4f5;
+    --card-background-color: #ffffff;
+    --primary-text-color: #1f2328;
+    --secondary-text-color: #6b7280;
+    --divider-color: rgba(0, 0, 0, 0.12);
+    --error-color: #d63a3a;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --primary-background-color: #111318;
+      --card-background-color: #1c1f26;
+      --primary-text-color: #e6e8eb;
+      --secondary-text-color: #9aa1ab;
+      --divider-color: rgba(255, 255, 255, 0.12);
+      --error-color: #ff5c5c;
+    }
+  }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--primary-background-color);
+    font-family: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
+    display: grid;
+    justify-items: center;
+  }
+  /* resize the window to see the axis labels adapt */
+  schedule-card { display: block; width: 100%; }
+</style>
+</head>
+<body>
+<schedule-card id="card"></schedule-card>
+
+<script>
+  // Minimal <ha-card> so the card looks right outside Home Assistant.
+  customElements.define("ha-card", class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" }).innerHTML = `
+        <style>:host {
+          display: block;
+          background: var(--card-background-color);
+          border-radius: 12px;
+          box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 6px rgba(0,0,0,.05);
+        }</style><slot></slot>`;
+    }
+  });
+</script>
+<script src="../schedule-card.js"></script>
+<script>
+  const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const heating = [
+    "05:50 08:30 16:30 22:00", "05:50 08:30 16:30 22:00", "05:50 08:30 12:00 13:00 16:30 22:00",
+    "05:50 08:30 16:30 22:00", "05:50 08:30 16:30 23:00", "06:30 23:00", "06:30 08:00 19:20 22:00",
+  ];
+  // includes 10-minute slots like the real controller uses
+  const water = Array(7).fill("05:30 06:00 17:00 17:10 18:20 18:50 19:30 19:40");
+
+  const states = {};
+  DAYS.forEach((d, i) => {
+    states[`sensor.washing_room_boiler_heating_schedule_${d}`] = { state: heating[i] };
+    states[`sensor.washing_room_boiler_hot_water_schedule_${d}`] = { state: water[i] };
+  });
+
+  const card = document.getElementById("card");
+  card.setConfig({
+    title: "Boiler schedule",
+    series: [
+      { name: "Heating", entity_prefix: "sensor.washing_room_boiler_heating_schedule_" },
+      { name: "Hot water", entity_prefix: "sensor.washing_room_boiler_hot_water_schedule_" },
+    ],
+  });
+  card.hass = {
+    states,
+    locale: { language: navigator.language, time_zone: "local" },
+    config: { time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+  };
+</script>
+</body>
+</html>
